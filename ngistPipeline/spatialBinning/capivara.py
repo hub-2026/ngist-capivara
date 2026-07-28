@@ -7,7 +7,7 @@ from scipy import ndimage
 from astropy.io import fits
 from printStatus import printStatus
 from scipy.spatial import cKDTree
-from voronoi import sn_func
+from ngistPipeline.spatialBinning.voronoi import sn_func
 
 """
 PURPOSE:
@@ -31,10 +31,6 @@ def generateSpatialBins(config, cube):
     # Generate the Voronoi bins
     printStatus.running("Defining the segments with Capivara")
     logging.info("Defining the segments with Capivara")
-
-    sn_func_covariances = functools.partial(
-        sn_func, covar_vor=config["SPATIAL_BINNING"]["COVARIANCE"]
-    )
 
     # Read maskfile
     maskfile = (
@@ -107,12 +103,15 @@ def generateSpatialBins(config, cube):
     binNum_long[idxUnmasked] = binNum
     binNum_long[idxMasked] = -1 * binNum_outside
     
+    sn_func_covariances = functools.partial(
+        sn_func, covar_vor=config["SPATIAL_BINNING"]["COVARIANCE"]
+    )
     sn = np.empty_like(nPixels, dtype=float)
     for i in ubins:
-        idx = np.where(ubins[i] == np.abs(binNum_long))[0]
-        sn[i] = sn_func(idx,
-                        cube["signal"], #[idxUnmasked],
-                        cube["noise"], #[idxUnmasked]
+        idx = np.where(ubins[i] == binNum_long)[0]
+        sn[i] = sn_func_covariances(idx,
+                        cube["signal"],
+                        cube["noise"],
                         )
         
     # Save bintable: data for *ALL* spectra inside and outside of the Voronoi region!
@@ -247,7 +246,3 @@ def save_table(
 
     printStatus.updateDone("Writing: " + config["GENERAL"]["RUN_ID"] + "_table.fits")
     logging.info("Wrote Voronoi table: " + outfits_table)
-
-
-def compute_snr():
-    pass
